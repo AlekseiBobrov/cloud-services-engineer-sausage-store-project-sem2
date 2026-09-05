@@ -9,7 +9,7 @@ env:
   NEXUS_HELM_REPO: ${{ secrets.NEXUS_HELM_REPO }}
   NEXUS_HELM_REPO_USER: ${{ secrets.NEXUS_HELM_REPO_USER }}
   NEXUS_HELM_REPO_PASSWORD: ${{ secrets.NEXUS_HELM_REPO_PASSWORD }}
-  SAUSAGE_STORE_NAMESPACE: YOUR_NAMESPACE
+  SAUSAGE_STORE_NAMESPACE: ${{ secrets.SAUSAGE_STORE_NAMESPACE }}
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
   VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
 
@@ -70,7 +70,44 @@ jobs:
       needs: build_and_push_to_docker_hub
 
       steps:
-      #### Опишите необходимые шаги
+        - name: Check out the repo
+          # Получение исходного кода из репозитория:
+          uses: actions/checkout@v3
+
+        - name: Set up Helm
+          # Установка утилиты helm и подключение плагина helm-push
+          # для публикации чартов в HTTP-репозиторий Nexus:
+          uses: azure/setup-helm@v3
+          with:
+            version: v3.12.0
+
+        - name: Install Helm Push Plugin
+          # Установка плагина cm-push (helm-push), который позволяет
+          # отправлять собранные чарты в репозиторий Nexus через HTTP:
+          run: helm plugin install https://github.com/chartmuseum/helm-push.git
+
+        - name: Package Helm Chart
+          # Упаковываем каталог sausage-store-chart в архив .tgz.
+          # Пакет кладётся в каталог ./chart-archive,
+          # а имя архива формируется из имени и версии чарта из Chart.yaml:
+          run: |
+            mkdir -p chart-archive
+            helm package sausage-store-chart --destination ./chart-archive
+
+        - name: Add Nexus as Helm Repository
+          # Регистрируем репозиторий Nexus локально, чтобы можно было
+          # публиковать чарты под именем nexus. Авторизация выполняется
+          # по логину/паролю из Secrets:
+          run: |
+            helm repo add nexus "${{ env.NEXUS_HELM_REPO }}" \
+              --username "${{ env.NEXUS_HELM_REPO_USER }}" \
+              --password "${{ env.NEXUS_HELM_REPO_PASSWORD }}"
+
+        - name: Push Helm Chart to Nexus
+          # Публикуем все упакованные .tgz-чарты из ./chart-archive
+          # в репозиторий nexus командой cm-push:
+          run: |
+            helm cm-push ./chart-archive/*.tgz nexus
 
   # Деплоим приложения в кластер Kubernetes с помощью helm-чарт
   deploy_helm_chart_to_kubernetes:
@@ -79,4 +116,42 @@ jobs:
       needs: add_helm_chart_to_nexus
 
       steps:
-      #### Опишите необходимые шаги
+        - name: Check out the repo
+          # Получение исходного кода из репозитория:
+          uses: actions/checkout@v3
+
+        - name: Set up Helm
+          # Установка утилиты helm:
+          uses: azure/setup-helm@v3
+          with:
+            version: v3.12.0
+
+        - name: Set up kubectl
+          # Установка клиента kubectl для работы с кластером Kubernetes:
+          uses: azure/setup-kubectl@v3
+
+        - name: Add Nexus as Helm Repository
+          # Регистрируем репозиторий Nexus локально и обновляем индекс чартов.
+          # Это позволяет установить чарт, опубликованный на предыдущем шаге:
+          run: |
+            helm repo add nexus "${{ env.NEXUS_HELM_REPO }}" \
+              --username "${{ env.NEXUS_HELM_REPO_USER }}" \
+              --password "${{ env.NEXUS_HELM_REPO_PASSWORD }}"
+            helm repo update
+
+        - name: Setup Kubeconfig
+          # Подключаем kubeconfig из Secrets, чтобы helm/kubectl могли
+          # подключиться к кластеру и деплоить в наш namespace:
+          run: |
+            mkdir -p "$HOME/.kube"
+            echo "${{ env.KUBE_CONFIG }}" | base64 --decode > "$HOME/.kube/config"
+
+        - name: Deploy Helm Chart To Kubernetes
+          # Устанавливаем/обновляем чарт sausage-store из репозитория nexus
+          # в наш namespace с помощью helm upgrade.
+          # Команда --install создаёт релиз, если он ещё не существует,
+          # а --wait дожидается готовности развёрнутых ресурсов:
+          run: |
+            helm upgrade sausage-store nexus/sausage-store \
+              --namespace "${{ env.SAUSAGE_STORE_NAMESPACE }}" \
+              --install --wait
