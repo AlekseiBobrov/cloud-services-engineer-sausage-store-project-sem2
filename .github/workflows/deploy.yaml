@@ -12,7 +12,6 @@ env:
   SAUSAGE_STORE_NAMESPACE: ${{ secrets.SAUSAGE_STORE_NAMESPACE }}
   KUBE_CONFIG: ${{ secrets.KUBE_CONFIG }}
   VAULT_TOKEN: ${{ secrets.VAULT_TOKEN }}
-  CHART_VERSION: "0.1.0"
 
 jobs:
   # Сборка и пуш образов в докерхаб:
@@ -93,7 +92,7 @@ jobs:
           # а имя архива формируется из имени и версии чарта из Chart.yaml:
           run: |
             mkdir -p chart-archive
-            helm package sausage-store-chart --version ${{ env.CHART_VERSION }} --destination ./chart-archive
+            helm package sausage-store-chart --destination ./chart-archive
 
         - name: Add Nexus as Helm Repository
           # Регистрируем репозиторий Nexus локально, чтобы можно было
@@ -107,7 +106,7 @@ jobs:
         - name: Push Helm Chart to Nexus
           run: |
             curl -f -u "${{ env.NEXUS_HELM_REPO_USER }}:${{ env.NEXUS_HELM_REPO_PASSWORD }}" \
-              --upload-file  ./chart-archive/sausage-store-chart-${{ env.CHART_VERSION }}.tgz \
+              --upload-file  ./chart-archive/*.tgz \
               "${{ env.NEXUS_HELM_REPO }}"
 
   # Деплоим приложения в кластер Kubernetes с помощью helm-чарт
