@@ -99,9 +99,9 @@ jobs:
           # публиковать чарты под именем nexus. Авторизация выполняется
           # по логину/паролю из Secrets:
           run: |
-            helm repo add nexus "${{ env.NEXUS_HELM_REPO }}" \
-              --username "${{ env.NEXUS_HELM_REPO_USER }}" \
-              --password "${{ env.NEXUS_HELM_REPO_PASSWORD }}"
+            helm repo add nexus ${{ env.NEXUS_HELM_REPO }} \
+              --username ${{ env.NEXUS_HELM_REPO_USER }} \
+              --password ${{ env.NEXUS_HELM_REPO_PASSWORD }}
 
         - name: Push Helm Chart to Nexus
           # Публикуем все упакованные .tgz-чарты из ./chart-archive
@@ -134,9 +134,9 @@ jobs:
           # Регистрируем репозиторий Nexus локально и обновляем индекс чартов.
           # Это позволяет установить чарт, опубликованный на предыдущем шаге:
           run: |
-            helm repo add nexus "${{ env.NEXUS_HELM_REPO }}" \
-              --username "${{ env.NEXUS_HELM_REPO_USER }}" \
-              --password "${{ env.NEXUS_HELM_REPO_PASSWORD }}"
+            helm repo add nexus ${{ env.NEXUS_HELM_REPO }} \
+              --username ${{ env.NEXUS_HELM_REPO_USER }} \
+              --password ${{ env.NEXUS_HELM_REPO_PASSWORD }}
             helm repo update
 
         - name: Setup Kubeconfig
