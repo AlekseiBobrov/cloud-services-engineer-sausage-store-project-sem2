@@ -13,13 +13,13 @@ frontend:
   strategy:
     type: Recreate
   service:
-    port: 80
+    port: 8080
   ingress:
     host: front-alekseibobrov.2sem.students-projects.ru
     tlsSecretName: 2sem-students-projects-wildcard-secret
     path: /
     pathType: Prefix
-  containerPort: 80
+  containerPort: 8080
   image: alexeybobrov/sausage-frontend:latest
   resources:
     requests:
