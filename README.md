@@ -34,3 +34,14 @@ sudo http-server ./dist/frontend/ -p 80 --proxy http://localhost:8080
 ```
 
 Then open your browser and go to [http://localhost](http://localhost)
+
+## Checks
+
+![Check 1](cheks/check_1.png)
+
+![Check 2](cheks/check_2.png)
+
+![Check 3](cheks/check_3.png)
+
+![Check 4](cheks/check_4.png)
+
